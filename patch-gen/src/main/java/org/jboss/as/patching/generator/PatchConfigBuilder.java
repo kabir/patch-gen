@@ -220,8 +220,9 @@ class PatchConfigBuilder implements ContentItemFilter {
             return optionalPaths;
         }
 
+
         @Override
-        public PatchBuilderWrapper toPatchBuilder() {
+        public PatchBuilderWrapper toPatchBuilder(boolean skipNoConfigLayers) {
             final PatchBuilderWrapper wrapper = new PatchBuilderWrapper() {
                 @Override
                 PatchElementBuilder modifyLayer(String name, boolean addOn) {
@@ -250,6 +251,7 @@ class PatchConfigBuilder implements ContentItemFilter {
             wrapper.setDescription(description);
             wrapper.setPatchId(patchId);
             wrapper.setContentItemFilter(PatchConfigBuilder.this);
+            wrapper.setSkipNoConfigLayers(skipNoConfigLayers);
 
             return wrapper;
         }

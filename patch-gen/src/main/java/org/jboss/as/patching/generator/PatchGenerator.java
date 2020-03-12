@@ -65,6 +65,7 @@ public class PatchGenerator {
     public static final String OUTPUT_FILE = "--output-file";
     public static final String PATCH_CONFIG = "--patch-config";
     public static final String UPDATED_DIST = "--updated-dist";
+    public static final String SKIP_LAYERS_NO_CONFIG = "--skip-layers-no-config";
 
     public static void main(String[] args) {
         try {
@@ -83,15 +84,17 @@ public class PatchGenerator {
     private final File newRoot;
     private File patchFile;
     private final File previousCp;
+    private final boolean skipLayersNoConfig;
     private File tmp;
 
-    private PatchGenerator(File patchConfig, File oldRoot, File newRoot, File patchFile, boolean includeVersion, File previousCp) {
+    private PatchGenerator(File patchConfig, File oldRoot, File newRoot, File patchFile, boolean includeVersion, File previousCp, boolean skipLayersNoConfig) {
         this.patchConfigFile = patchConfig;
         this.oldRoot = oldRoot;
         this.newRoot = newRoot;
         this.patchFile = patchFile;
         this.includeVersion = includeVersion;
         this.previousCp = previousCp;
+        this.skipLayersNoConfig = skipLayersNoConfig;
     }
 
     private void process() throws PatchingException, IOException, XMLStreamException {
@@ -142,7 +145,7 @@ public class PatchGenerator {
             }
 
             // Build the patch metadata
-            final PatchBuilderWrapper builder = patchConfig.toPatchBuilder();
+            final PatchBuilderWrapper builder = patchConfig.toPatchBuilder(skipLayersNoConfig);
             builder.setPatchId(patchConfig.getPatchId());
             builder.setDescription(patchConfig.getDescription());
             builder.setOptionalPaths(patchConfig.getOptionalPaths());
@@ -213,6 +216,7 @@ public class PatchGenerator {
         File patchFile = null;
         boolean includeVersion = false;
         File combineWith = null;
+        boolean skipLayersNoConfig = false;
 
         final int argsLength = args.length;
         for (int i = 0; i < argsLength; i++) {
@@ -289,6 +293,8 @@ public class PatchGenerator {
                         usage();
                         return null;
                     }
+                } else if (arg.startsWith(SKIP_LAYERS_NO_CONFIG)) {
+                    skipLayersNoConfig = true;
                 }
             } catch (IndexOutOfBoundsException e) {
                 System.err.printf(PatchGenLogger.argumentExpected(arg));
@@ -303,7 +309,7 @@ public class PatchGenerator {
             return null;
         }
 
-        return new PatchGenerator(patchConfig, oldFile, newFile, patchFile, includeVersion, combineWith);
+        return new PatchGenerator(patchConfig, oldFile, newFile, patchFile, includeVersion, combineWith, skipLayersNoConfig);
     }
 
     private static void usage() {
@@ -333,6 +339,9 @@ public class PatchGenerator {
 
         usage.addArguments(COMBINE_WITH + "=<file>");
         usage.addInstruction("Filesystem path of the previous CP to be included into the same package with the newly generated one");
+
+        usage.addArguments(SKIP_LAYERS_NO_CONFIG);
+        usage.addInstruction("Does not perform comparison of layers which are not set up in the patch config xml");
 
         String headline = usage.getDefaultUsageHeadline("patch-gen");
         System.out.print(usage.usage(headline));

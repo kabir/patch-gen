@@ -122,6 +122,6 @@ public interface PatchConfig {
      *
      * @return the patch builder
      */
-    PatchBuilderWrapper toPatchBuilder();
+    PatchBuilderWrapper toPatchBuilder(boolean skipNoConfigLayers);
 
 }
