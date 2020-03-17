@@ -16,6 +16,10 @@
 
 package org.jboss.as.patching.generator;
 
+import static org.jboss.as.patching.generator.PatchGenerator.INCLUDED_MISC_FILES;
+import static org.jboss.as.patching.generator.PatchGenerator.SKIP_MISC_FILES;
+
+import java.io.PrintStream;
 import java.util.Set;
 
 import org.jboss.as.controller.OperationFailedException;
@@ -44,5 +48,9 @@ public class PatchGenLogger {
 
     public static OperationFailedException patchActive(String patchId) {
         return new OperationFailedException("Cannot complete operation. Patch '" + patchId + "' is currently active");
+    }
+
+    public static String includedMiscFilesAndNotSkippingMiscFiles() {
+        return INCLUDED_MISC_FILES + " was used, but it can only be used if " + SKIP_MISC_FILES + " is also specified.";
     }
 }

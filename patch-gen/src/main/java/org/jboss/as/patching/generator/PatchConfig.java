@@ -27,6 +27,7 @@ import java.util.Set;
 
 import org.jboss.as.patching.metadata.ContentItem;
 import org.jboss.as.patching.metadata.Patch;
+import org.jboss.as.patching.runner.ContentItemFilter;
 
 /**
  * Configuration for generating a patch.
@@ -120,8 +121,10 @@ public interface PatchConfig {
     /**
      * Create a {@link PatchBuilderWrapper} whose basic metadata matches what's configured in this object.
      *
+     * @param contentItemFilter the content item filter to use
+     * @param skipNoConfigLayers {@code true} to skip layers not defined in the patch config xml
      * @return the patch builder
      */
-    PatchBuilderWrapper toPatchBuilder(boolean skipNoConfigLayers);
+    PatchBuilderWrapper toPatchBuilder(ContentItemFilter contentItemFilter, boolean skipNoConfigLayers);
 
 }

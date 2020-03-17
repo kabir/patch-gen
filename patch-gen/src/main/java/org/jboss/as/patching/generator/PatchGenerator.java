@@ -30,7 +30,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -66,6 +69,8 @@ public class PatchGenerator {
     public static final String PATCH_CONFIG = "--patch-config";
     public static final String UPDATED_DIST = "--updated-dist";
     public static final String SKIP_LAYERS_NO_CONFIG = "--skip-layers-no-config";
+    public static final String SKIP_MISC_FILES = "--skip-misc-files";
+    public static final String INCLUDED_MISC_FILES = "--included-misc-files";
 
     public static void main(String[] args) {
         try {
@@ -85,9 +90,12 @@ public class PatchGenerator {
     private File patchFile;
     private final File previousCp;
     private final boolean skipLayersNoConfig;
+    private final SkipMiscFilesContentItemFilter skipMiscFilesContentItemFilter;
     private File tmp;
 
-    private PatchGenerator(File patchConfig, File oldRoot, File newRoot, File patchFile, boolean includeVersion, File previousCp, boolean skipLayersNoConfig) {
+    private PatchGenerator(File patchConfig, File oldRoot, File newRoot,
+                           File patchFile, boolean includeVersion, File previousCp,
+                           boolean skipLayersNoConfig, SkipMiscFilesContentItemFilter skipMiscFilesContentItemFilter) {
         this.patchConfigFile = patchConfig;
         this.oldRoot = oldRoot;
         this.newRoot = newRoot;
@@ -95,6 +103,7 @@ public class PatchGenerator {
         this.includeVersion = includeVersion;
         this.previousCp = previousCp;
         this.skipLayersNoConfig = skipLayersNoConfig;
+        this.skipMiscFilesContentItemFilter = skipMiscFilesContentItemFilter;
     }
 
     private void process() throws PatchingException, IOException, XMLStreamException {
@@ -145,7 +154,7 @@ public class PatchGenerator {
             }
 
             // Build the patch metadata
-            final PatchBuilderWrapper builder = patchConfig.toPatchBuilder(skipLayersNoConfig);
+            final PatchBuilderWrapper builder = patchConfig.toPatchBuilder(skipMiscFilesContentItemFilter, skipLayersNoConfig);
             builder.setPatchId(patchConfig.getPatchId());
             builder.setDescription(patchConfig.getDescription());
             builder.setOptionalPaths(patchConfig.getOptionalPaths());
@@ -217,6 +226,8 @@ public class PatchGenerator {
         boolean includeVersion = false;
         File combineWith = null;
         boolean skipLayersNoConfig = false;
+        boolean skipMiscFiles = false;
+        List<String> includedMiscFiles = null;
 
         final int argsLength = args.length;
         for (int i = 0; i < argsLength; i++) {
@@ -295,6 +306,11 @@ public class PatchGenerator {
                     }
                 } else if (arg.startsWith(SKIP_LAYERS_NO_CONFIG)) {
                     skipLayersNoConfig = true;
+                } else if (arg.equals(SKIP_MISC_FILES)) {
+                    skipMiscFiles = true;
+                } else if (arg.startsWith(INCLUDED_MISC_FILES)) {
+                    String val = arg.substring(SKIP_MISC_FILES.length() + 1);
+                    includedMiscFiles = new ArrayList<>(Arrays.asList(val.split(",")));
                 }
             } catch (IndexOutOfBoundsException e) {
                 System.err.printf(PatchGenLogger.argumentExpected(arg));
@@ -309,7 +325,18 @@ public class PatchGenerator {
             return null;
         }
 
-        return new PatchGenerator(patchConfig, oldFile, newFile, patchFile, includeVersion, combineWith, skipLayersNoConfig);
+        if (includedMiscFiles != null && !skipMiscFiles) {
+            System.err.println(PatchGenLogger.includedMiscFilesAndNotSkippingMiscFiles());
+            usage();
+            return null;
+        }
+
+        SkipMiscFilesContentItemFilter skipMiscFilesContentItemFilter = null;
+        if (skipMiscFiles) {
+            skipMiscFilesContentItemFilter = SkipMiscFilesContentItemFilter.create(includedMiscFiles);
+        }
+
+        return new PatchGenerator(patchConfig, oldFile, newFile, patchFile, includeVersion, combineWith, skipLayersNoConfig, skipMiscFilesContentItemFilter);
     }
 
     private static void usage() {
@@ -342,6 +369,12 @@ public class PatchGenerator {
 
         usage.addArguments(SKIP_LAYERS_NO_CONFIG);
         usage.addInstruction("Does not perform comparison of layers which are not set up in the patch config xml");
+
+        usage.addArguments(SKIP_MISC_FILES);
+        usage.addInstruction("If set, misc files are not included in the resulting patch. Still individual files can be included with the " + INCLUDED_MISC_FILES + " argument");
+
+        usage.addArguments(INCLUDED_MISC_FILES + "=<file list>");
+        usage.addInstruction("Comma-separated list of relative file paths included in the resulting patch. Only allowed if " + SKIP_MISC_FILES + " has been set");
 
         String headline = usage.getDefaultUsageHeadline("patch-gen");
         System.out.print(usage.usage(headline));
