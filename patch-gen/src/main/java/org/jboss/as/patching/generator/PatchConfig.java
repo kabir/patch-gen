@@ -119,12 +119,22 @@ public interface PatchConfig {
     Collection<OptionalPath> getOptionalPaths();
 
     /**
-     * Create a {@link PatchBuilderWrapper} whose basic metadata matches what's configured in this object.
+     * For cumulative patches we may want to override the applies to name and versions, in order
+     * to target a different patch stream. If that has happened that value is returned
+     * here.
      *
-     * @param contentItemFilter the content item filter to use
-     * @param skipNoConfigLayers {@code true} to skip layers not defined in the patch config xml
-     * @return the patch builder
+     * @return the rename or {@code null} if no rename has happened
      */
+    public CumulativePatchRenameConfig getRename();
+
+
+        /**
+         * Create a {@link PatchBuilderWrapper} whose basic metadata matches what's configured in this object.
+         *
+         * @param contentItemFilter the content item filter to use
+         * @param skipNoConfigLayers {@code true} to skip layers not defined in the patch config xml
+         * @return the patch builder
+         */
     PatchBuilderWrapper toPatchBuilder(ContentItemFilter contentItemFilter, boolean skipNoConfigLayers);
 
 }

@@ -43,8 +43,12 @@ import org.jboss.as.patching.IoUtils;
 import org.jboss.as.patching.PatchingException;
 import org.jboss.as.patching.ZipUtils;
 import org.jboss.as.patching.logging.PatchLogger;
+import org.jboss.as.patching.metadata.ContentModification;
+import org.jboss.as.patching.metadata.Identity;
 import org.jboss.as.patching.metadata.Patch;
+import org.jboss.as.patching.metadata.PatchElement;
 import org.jboss.as.patching.metadata.PatchMerger;
+import org.jboss.as.patching.metadata.impl.IdentityImpl;
 import org.jboss.as.version.ProductConfig;
 import org.jboss.modules.Module;
 
@@ -169,7 +173,12 @@ public class PatchGenerator {
             }
 
             // Create the resulting patch
-            final Patch patch = builder.compare(base, updated, includeVersion);
+            Patch patch = builder.compare(base, updated, includeVersion);
+
+            // If we have renamed the patch, use this information before writing it out
+            if (patchConfig.getRename() != null) {
+                patch = reworkPatchIdentity(patch, patchConfig.getRename());
+            }
 
             // Copy the contents to the temp dir structure
             PatchContentWriter.process(tmp, newRoot, patch);
@@ -183,7 +192,50 @@ public class PatchGenerator {
         } finally {
             IoUtils.recursiveDelete(tmp);
         }
+    }
 
+    Patch reworkPatchIdentity(final Patch patch, final CumulativePatchRenameConfig config) {
+        return new Patch() {
+            @Override
+            public String getPatchId() {
+                return patch.getPatchId();
+            }
+
+            @Override
+            public String getDescription() {
+                return patch.getDescription();
+            }
+
+            @Override
+            public String getLink() {
+                return patch.getLink();
+            }
+
+            @Override
+            public Identity getIdentity() {
+                final Identity original = patch.getIdentity();
+                final IdentityImpl newIdentity = new IdentityImpl(config.getAppliesToName(), config.getAppliesToVersion());
+                newIdentity.setResultingVersion(config.getResultingVersion());
+                newIdentity.setPatchType(original.getPatchType());
+                for (String patchId : original.getRequires()) {
+                    newIdentity.require(patchId);
+                }
+                for (String patchId : original.getIncompatibleWith()) {
+                    newIdentity.incompatibleWith(patchId);
+                }
+                return newIdentity;
+            }
+
+            @Override
+            public List<PatchElement> getElements() {
+                return patch.getElements();
+            }
+
+            @Override
+            public List<ContentModification> getModifications() {
+                return patch.getModifications();
+            }
+        };
     }
 
     private PatchConfig parsePatchConfig() throws FileNotFoundException, XMLStreamException {

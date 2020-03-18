@@ -60,6 +60,9 @@ class PatchConfigBuilder implements ContentItemFilter {
     private String appliesToName;
     private String appliesToVersion;
     private String resultingVersion;
+    private String renamedAppliesToName;
+    private String renamedAppliesToVersion;
+    private String renamedResultingVersion;
     private Patch.PatchType patchType;
     private boolean generateByDiff = true;
     private Set<String> runtimeUseItems = new HashSet<String>();
@@ -123,6 +126,8 @@ class PatchConfigBuilder implements ContentItemFilter {
         this.resultingVersion = resultingVersion;
     }
 
+
+
     Set<ContentItem> getSpecifiedContent() {
         return specifiedContent;
     }
@@ -151,6 +156,25 @@ class PatchConfigBuilder implements ContentItemFilter {
                 optionalPaths.add(op);
         }
         return this;
+    }
+
+    PatchConfigBuilder setRename(String name, String appliesToVersion, String resultingVersion) {
+        this.renamedAppliesToName = name;
+        this.renamedAppliesToVersion = appliesToVersion;
+        this.renamedResultingVersion = resultingVersion;
+        return this;
+    }
+
+    public String getRenamedAppliesToName() {
+        return renamedAppliesToName;
+    }
+
+    public String getRenamedAppliesToVersion() {
+        return renamedAppliesToVersion;
+    }
+
+    public String getRenamedResultingVersion() {
+        return renamedResultingVersion;
     }
 
     PatchConfig build() {
@@ -220,6 +244,10 @@ class PatchConfigBuilder implements ContentItemFilter {
             return optionalPaths;
         }
 
+        @Override
+        public CumulativePatchRenameConfig getRename() {
+            return new CumulativePatchRenameConfigImpl();
+        }
 
         @Override
         public PatchBuilderWrapper toPatchBuilder(ContentItemFilter contentItemFilter, boolean skipNoConfigLayers) {
@@ -280,4 +308,20 @@ class PatchConfigBuilder implements ContentItemFilter {
                 one.getRelativePath().equals(two.getRelativePath());
     }
 
+    private class CumulativePatchRenameConfigImpl implements CumulativePatchRenameConfig {
+        @Override
+        public String getAppliesToName() {
+            return renamedAppliesToName;
+        }
+
+        @Override
+        public String getAppliesToVersion() {
+            return renamedAppliesToVersion;
+        }
+
+        @Override
+        public String getResultingVersion() {
+            return renamedResultingVersion;
+        }
+    }
 }

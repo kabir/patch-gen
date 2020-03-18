@@ -69,6 +69,7 @@ class PatchConfigXml_1_0 implements XMLStreamConstants, XMLElementReader<PatchCo
         ONE_OFF("one-off"),
         OPTIONAL_PATHS("optional-paths"),
         PATCH_CONFIG("patch-config"),
+        RENAME("rename"),
         PATH("path"),
         REMOVED("removed"),
         SPECIFIED_CONTENT("specified-content"),
@@ -391,8 +392,6 @@ class PatchConfigXml_1_0 implements XMLStreamConstants, XMLElementReader<PatchCo
             }
         }
 
-        requireNoContent(reader);
-
         if (!required.isEmpty()) {
             throw missingRequired(reader, required);
         }
@@ -400,7 +399,57 @@ class PatchConfigXml_1_0 implements XMLStreamConstants, XMLElementReader<PatchCo
         builder.setAppliesToName(name);
         builder.setCumulativeType(appliesTo, resulting);
 
+        while (reader.hasNext() && reader.nextTag() != END_ELEMENT) {
+            final Element element = Element.forName(reader.getLocalName());
+            switch (element) {
+                case RENAME:
+                    parseCumultivePatchRename(reader, builder);
+                    break;
+                default:
+                    throw unexpectedElement(reader);
+            }
+        }
+
         patchTypeConfigured = true;
+    }
+
+    private void parseCumultivePatchRename(final XMLExtendedStreamReader reader, final PatchConfigBuilder builder) throws XMLStreamException {
+        String name = null;
+        String appliesTo = null;
+        String resulting = null;
+
+        Set<Attribute> required = EnumSet.of(Attribute.NAME, Attribute.APPLIES_TO_VERSION, Attribute.RESULTING_VERSION);
+
+        final int count = reader.getAttributeCount();
+        for (int i = 0; i < count; i++) {
+            final String value = reader.getAttributeValue(i);
+            final Attribute attribute = Attribute.forName(reader.getAttributeLocalName(i));
+            required.remove(attribute);
+            switch (attribute) {
+                case NAME:
+                    name = value;
+                    required.remove(Attribute.NAME);
+                    break;
+                case APPLIES_TO_VERSION:
+                    appliesTo = value;
+                    required.remove(Attribute.APPLIES_TO_VERSION);
+                    break;
+                case RESULTING_VERSION:
+                    resulting = value;
+                    required.remove(Attribute.RESULTING_VERSION);
+                    break;
+                default:
+                    throw unexpectedAttribute(reader, i);
+            }
+        }
+
+        if (!required.isEmpty()) {
+            throw missingRequired(reader, required);
+        }
+
+        requireNoContent(reader);
+
+        builder.setRename(name, appliesTo, resulting);
     }
 
     private void parseOneOffPatchType(final XMLExtendedStreamReader reader, final PatchConfigBuilder builder) throws XMLStreamException {
